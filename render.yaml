@@ -1,16 +1,14 @@
 services:
   - type: web
     name: hospital-backend
-    env: node
+    runtime: node
     plan: free
     region: oregon
     rootDir: backend
-    buildCommand: yarn install
-    startCommand: yarn start
+    buildCommand: npm install
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: MONGO_URI
         sync: false
-        # PORT is automatically provided by Render, don't set it manually
-
