@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: hospital-backend
+    env: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: yarn install
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+        # PORT is automatically provided by Render, don't set it manually
+
