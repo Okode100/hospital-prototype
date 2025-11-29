@@ -72,18 +72,72 @@ router.get('/:serialNumber', async (req, res) => {
  */
 router.put('/:serialNumber', async (req, res) => {
   try {
-    const patient = await Patient.findOneAndUpdate(
-      { serialNumber: req.params.serialNumber },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    // Check if patient exists first
+    const existingPatient = await Patient.findOne({
+      serialNumber: req.params.serialNumber,
+    });
 
-    if (!patient) {
+    if (!existingPatient) {
       return res.status(404).json({
         success: false,
         message: 'Patient not found',
       });
     }
+
+    // Process update data - handle nested medicalHistory properly
+    const updateData = { ...req.body };
+
+    // Convert date strings to Date objects for nested medicalHistory entries
+    if (updateData.medicalHistory) {
+      const convertHistoryEntryDates = (entries) => {
+        if (!Array.isArray(entries)) return entries;
+        return entries.map(entry => ({
+          ...entry,
+          date: entry.date ? new Date(entry.date) : null
+        }));
+      };
+
+      if (updateData.medicalHistory.generalHistory) {
+        updateData.medicalHistory.generalHistory = convertHistoryEntryDates(
+          updateData.medicalHistory.generalHistory
+        );
+      }
+      if (updateData.medicalHistory.maternalReproductiveHistory) {
+        updateData.medicalHistory.maternalReproductiveHistory = convertHistoryEntryDates(
+          updateData.medicalHistory.maternalReproductiveHistory
+        );
+      }
+      if (updateData.medicalHistory.allergies) {
+        updateData.medicalHistory.allergies = convertHistoryEntryDates(
+          updateData.medicalHistory.allergies
+        );
+      }
+      if (updateData.medicalHistory.surgicalHistory) {
+        updateData.medicalHistory.surgicalHistory = convertHistoryEntryDates(
+          updateData.medicalHistory.surgicalHistory
+        );
+      }
+      if (updateData.medicalHistory.medications) {
+        updateData.medicalHistory.medications = convertHistoryEntryDates(
+          updateData.medicalHistory.medications
+        );
+      }
+    }
+
+    // Convert other date fields if present
+    if (updateData.dateOfBirth) {
+      updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+    }
+    if (updateData.registrationDate) {
+      updateData.registrationDate = new Date(updateData.registrationDate);
+    }
+
+    // Update the patient
+    const patient = await Patient.findOneAndUpdate(
+      { serialNumber: req.params.serialNumber },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
 
     res.json({
       success: true,
