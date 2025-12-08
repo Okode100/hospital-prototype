@@ -2,23 +2,51 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/authRoutes');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_ORIGIN || true,
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({ status: 'OK', message: 'Hospital prototype API' });
-});
+// Auth routes
+app.use('/api/auth', authRoutes);
 
-// Patient routes
+// JWT Middleware (for protected routes)
+function requireAuth(role) {
+  return (req, res, next) => {
+    const token = req.cookies?.token || (req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : undefined);
+    if (!token) return res.status(401).json({ success: false, message: 'No token. Not authenticated.' });
+    try {
+      const user = jwt.verify(token, process.env.JWT_SECRET || 'supersecret_jwt');
+      req.user = user;
+      if (role && user.role !== role) {
+        return res.status(403).json({ success: false, message: 'Forbidden. Wrong role.' });
+      }
+      next();
+    } catch {
+      return res.status(401).json({ success: false, message: 'Invalid token.' });
+    }
+  };
+}
+
+// Patient routes (protect mutation routes)
 const patientRoutes = require('./routes/patientRoutes');
-app.use('/api/patient', patientRoutes);
+app.use('/api/patient', (req, res, next) => {
+  if (req.method === 'POST' || req.method === 'DELETE' || req.method === 'PUT') {
+    return requireAuth('admin')(req, res, next);
+  }
+  next();
+}, patientRoutes);
 
 // Alias for listing all patients (plural form)
 app.get('/api/patients', async (req, res) => {
