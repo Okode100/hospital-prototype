@@ -154,10 +154,7 @@ async function seedDatabase() {
   }
 
   try {
-    await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');
 
     // ADMIN SEEDING LOGIC
