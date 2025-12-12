@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Patient = require('./models/Patient');
+const Admin = require('./models/Admin');
+const bcrypt = require('bcrypt');
+
 
 dotenv.config();
 
@@ -156,6 +159,19 @@ async function seedDatabase() {
       useUnifiedTopology: true,
     });
     console.log('✅ Connected to MongoDB');
+
+    // ADMIN SEEDING LOGIC
+    const adminUsername = 'admin';
+    const adminRawPassword = 'adminpass';
+    const adminExisting = await Admin.findOne({ username: adminUsername });
+    if (!adminExisting) {
+      const hashed = await bcrypt.hash(adminRawPassword, 10);
+      await Admin.create({ username: adminUsername, password: hashed, role: 'admin' });
+      console.log(`✨ Admin user created. Username: '${adminUsername}' Password: '${adminRawPassword}'`);
+    } else {
+      console.log(`ℹ️  Admin user '${adminUsername}' already exists.`);
+    }
+    // END ADMIN SEEDING
 
     let insertedCount = 0;
     for (const patient of patients) {
