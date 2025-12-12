@@ -17,7 +17,7 @@ const COOKIE_OPTIONS = {
 // Helper to create JWT
 function signToken(user) {
   return jwt.sign(
-    { id: user._id, role: user.role, email: user.email },
+    { id: user._id, role: user.role, username: user.username },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -25,20 +25,14 @@ function signToken(user) {
 
 // Unified login for admin/patient
 router.post('/login', async (req, res) => {
-  const { email, password, role } = req.body;
-  if (!email || !password || !role) {
-    return res.status(400).json({ success: false, message: 'Email, password, and role required.' });
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Username and password required.' });
   }
   try {
     let user, Model;
-    if (role === 'admin') {
-      Model = Admin;
-    } else if (role === 'patient') {
-      Model = Patient;
-    } else {
-      return res.status(400).json({ success: false, message: 'Invalid role.' });
-    }
-    user = await Model.findOne({ email }).select('+password');
+    // Try Admin first, then Patient
+    user = await (await Admin.findOne({ username }).select('+password')) || await (await Patient.findOne({ username }).select('+password'));
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials.' });
     }
@@ -51,7 +45,7 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, COOKIE_OPTIONS);
     res.json({
       success: true,
-      user: { id: user._id, email: user.email, role: user.role, serialNumber: user.serialNumber || undefined }
+      user: { id: user._id, username: user.username, role: user.role, serialNumber: user.serialNumber || undefined }
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
